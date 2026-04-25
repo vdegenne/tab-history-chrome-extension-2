@@ -1,0 +1,18 @@
+md-dialog {
+	max-width: min(500px, calc(100vw - 24px));
+	width: 100%;
+}
+
+section:not(:last-of-type) {
+	/* display: flex; */
+	/* flex-direction: column; */
+	/* gap: 16px; */
+	margin-bottom: 48px;
+}
+/* section h3 { */
+/* 	margin: 9px 0 0; */
+/* } */
+
+md-list {
+	padding: 0;
+}

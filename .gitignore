@@ -1,0 +1,14 @@
+node_modules
+.wireit
+dist
+lib
+assets/fonts/material-symbols.woff2
+src/styles/stylesheets/symbols.css
+.firebase
+admin-scripts/serviceAccountKey.json
+.mdicon2svg
+.env
+*.zip
+background.js
+content.js
+offscreen.js

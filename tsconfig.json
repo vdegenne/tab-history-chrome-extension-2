@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"strict": true,
+		"useDefineForClassFields": false,
+		"experimentalDecorators": true,
+		"noUncheckedIndexedAccess": false,
+		"types": [
+			"chrome",
+			"@vdegenne/chrome-extension",
+			"vite/client",
+			"@vdegenne/vite-plugin-css-modules/css"
+		],
+		"lib": ["ESNext", "DOM"],
+		"outDir": "./lib/",
+		"rootDir": "./src/"
+	},
+	"include": ["./src/**/*.ts", "./types.d.ts", "./css.d.ts"]
+}

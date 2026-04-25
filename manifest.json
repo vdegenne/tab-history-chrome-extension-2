@@ -1,0 +1,54 @@
+{
+	"manifest_version": 3,
+	"name": "tab-history-chrome-extension-2",
+	"version": "0.1",
+	"permissions": [
+		// "offscreen",
+		"storage"
+		// "alarms",
+		// "notifications",
+		// "sidePanel",
+		// "scripting",
+		// "tabs",
+		// "sessions"
+	],
+	"background": {
+		"service_worker": "./background.js"
+	},
+	/* "content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": [
+			// "./inject-content.js",
+				"./content.js"
+			],
+			"run_at": "document_start",
+			"all_frames": false
+		}
+	], */
+	"icons": {
+		"128": "/assets/img/pwa-192x192.png"
+	},
+	/*"web_accessible_resources": [
+		{
+			"resources": ["content.js"],
+			"matches": ["<all_urls>"]
+		}
+	],*/
+	"options_page": "/documents/options/dist/index.html"
+	/*"action": {
+		// "default_popup": "/documents/popup/dist/index.html",
+		"default_title": "RENAME THIS, open popup if set, or call chrome.action.onClicked"
+	}*/
+	/*"commands": {
+		"ask-chatgpt": {
+			"suggested_key": {
+				"default": "Alt+R"
+			},
+			"description": ""
+		}
+	}*/
+	/*"side_panel": {
+		"default_path": "/documents/sidepanel/dist/index.html",
+	}*/
+}
