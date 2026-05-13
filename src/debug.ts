@@ -1,5 +1,5 @@
-import {DEBUG} from '@vdegenne/chrome-extension/debug.js'
+import {DEBUG} from '@vdegenne/chrome-extension/debug.js';
 
-DEBUG(false)
+DEBUG(false);
 
-export {DEBUG}
+export {DEBUG};

@@ -9,35 +9,59 @@ type SessionState = {
 
 const STORAGE_KEY = 'tab_state';
 
+/**
+ * Pour debugger
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+	if (message?.type === 'GET_TAB_ID') {
+		sendResponse({tabId: sender.tab?.id});
+	}
+});
+
 /* -------------------- SERIALIZATION QUEUE -------------------- */
 
 let queue: Promise<any> = Promise.resolve();
 
 function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-	queue = queue.then(fn, fn);
-	return queue;
+	const result = queue.then(() => fn());
+
+	queue = result.catch(() => {});
+
+	return result;
 }
 
 /* -------------------- STORAGE -------------------- */
 
-function getState(): Promise<SessionState> {
-	return new Promise((resolve) => {
-		chrome.storage.session.get(STORAGE_KEY, (res) => {
-			const state = res[STORAGE_KEY] as SessionState | undefined;
+let state: SessionState | null = null;
+let statePromise: Promise<SessionState> | null = null;
 
-			resolve(
-				state ?? {
-					lastActiveTabId: null,
-					graph: {},
-				},
-			);
+function getState(): Promise<SessionState> {
+	if (state) return Promise.resolve(state);
+
+	if (statePromise) return statePromise;
+
+	statePromise = new Promise((resolve) => {
+		chrome.storage.session.get(STORAGE_KEY, (res) => {
+			state = (res[STORAGE_KEY] as SessionState | null) ?? {
+				lastActiveTabId: null,
+				graph: {},
+			};
+
+			statePromise = null;
+			resolve(state);
 		});
 	});
+
+	return statePromise;
 }
 
-function setState(state: SessionState): Promise<void> {
+function setState(nextState: SessionState): Promise<void> {
+	state = nextState;
+
 	return new Promise((resolve) => {
-		chrome.storage.session.set({[STORAGE_KEY]: state}, () => {
+		chrome.storage.session.set({[STORAGE_KEY]: nextState}, () => {
+			// console.log(state!.lastActiveTabId);
+			console.log(JSON.stringify(state!, null, '\t'));
 			resolve();
 		});
 	});
@@ -47,16 +71,32 @@ function setState(state: SessionState): Promise<void> {
 
 function updateActiveTab(tabId: number): Promise<void> {
 	return runExclusive(async () => {
-		const state = await getState();
+		const current = await getState();
 
-		state.lastActiveTabId = tabId;
+		const next: SessionState = {
+			...current,
+			lastActiveTabId: tabId,
+		};
+		console.clear();
+		console.log('Active tab:', tabId);
 
-		await setState(state);
+		await setState(next);
 	});
 }
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
 	updateActiveTab(activeInfo.tabId);
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+	if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+
+	chrome.tabs.query({active: true, windowId}, function (tabs) {
+		const tabId = tabs[0]?.id;
+		if (tabId === undefined) return;
+
+		updateActiveTab(tabId);
+	});
 });
 
 /* -------------------- TAB CREATED -------------------- */
@@ -67,7 +107,12 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 		const state = await getState();
 
-		const refererId = state.lastActiveTabId;
+		console.clear();
+		console.log(`opener id: ${tab.openerTabId}`);
+		console.log(`or from state: ${state.lastActiveTabId}`);
+
+		// const refererId = state.lastActiveTabId;
+		const refererId = tab.openerTabId ?? state.lastActiveTabId;
 
 		if (refererId != null) {
 			state.graph[tab.id] = refererId;
@@ -85,19 +130,32 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 	runExclusive(async () => {
 		const state = await getState();
 
-		const refererId = state.graph[tabId];
+		const parent = state.graph[tabId];
 
+		console.log(`deletion`);
+		console.log(`parent: ${parent}`);
+
+		// 1. supprimer le node
 		delete state.graph[tabId];
 
-		await setState(state);
+		if (parent != null) {
+			// 2. reconnecter tous les enfants de tabId vers parent
+			for (const [childIdStr, p] of Object.entries(state.graph)) {
+				const childId = Number(childIdStr);
 
-		if (refererId != null) {
-			chrome.tabs.get(refererId, (tab) => {
+				if (p === tabId) {
+					state.graph[childId] = parent;
+				}
+			}
+
+			// 3. focus fallback
+			chrome.tabs.get(parent, (tab) => {
 				if (chrome.runtime.lastError || !tab) return;
-
-				chrome.tabs.update(refererId, {active: true});
+				chrome.tabs.update(parent, {active: true});
 			});
 		}
+
+		await setState(state);
 	});
 });
 

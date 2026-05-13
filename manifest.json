@@ -9,23 +9,23 @@
 		// "notifications",
 		// "sidePanel",
 		// "scripting",
-		// "tabs",
+		// "tabs"
 		// "sessions"
 	],
 	"background": {
 		"service_worker": "./background.js"
 	},
-	/* "content_scripts": [
+	"content_scripts": [
 		{
 			"matches": ["<all_urls>"],
 			"js": [
-			// "./inject-content.js",
+				// "./inject-content.js",
 				"./content.js"
 			],
-			"run_at": "document_start",
+			"run_at": "document_end",
 			"all_frames": false
 		}
-	], */
+	],
 	"icons": {
 		"128": "/assets/img/pwa-192x192.png"
 	},
