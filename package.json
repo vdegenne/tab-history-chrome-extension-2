@@ -110,6 +110,7 @@
 		"@tailwindcss/postcss": "^4.2.4",
 		"@types/chrome": "^0.1.40",
 		"@vdegenne/chrome-extension": "^0.1.21",
+		"@vdegenne/debouncer": "^1.0.12",
 		"@vdegenne/forms": "^0.1.72",
 		"@vdegenne/material-color-helpers": "^1.11.7",
 		"@vdegenne/rollup": "^0.1.14",

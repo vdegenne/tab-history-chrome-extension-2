@@ -1,3 +1,5 @@
+import {Debouncer} from '@vdegenne/debouncer';
+
 type TabGraph = {
 	[tabId: number]: number;
 };
@@ -55,47 +57,86 @@ function getState(): Promise<SessionState> {
 	return statePromise;
 }
 
+const saveStateDebouncer = new Debouncer(
+	(state: SessionState) => chrome.storage.session.set({[STORAGE_KEY]: state}),
+	10,
+);
+
+async function debugShowState() {
+	const state = await getState();
+	const {graph} = state;
+	const entries = Object.entries(graph);
+	const lastFive = Object.fromEntries(entries.slice(-5));
+	console.log(
+		JSON.stringify(
+			{lastActiveTabId: state.lastActiveTabId, graph: lastFive},
+			null,
+			'\t',
+		),
+	);
+}
+
 function setState(nextState: SessionState): Promise<void> {
 	state = nextState;
 
-	return new Promise((resolve) => {
-		chrome.storage.session.set({[STORAGE_KEY]: nextState}, () => {
-			// console.log(state!.lastActiveTabId);
-			console.log(JSON.stringify(state!, null, '\t'));
-			resolve();
-		});
-	});
+	// return new Promise((resolve) => {
+	// 	chrome.storage.session.set({[STORAGE_KEY]: nextState}, () => {
+	// 		// console.log(state!.lastActiveTabId);
+	// 		// console.log(JSON.stringify(state!, null, '\t'));
+	// 		resolve();
+	// 	});
+	// });
+
+	// TODO: return this instead if it bugs (but it will be blocking)
+	saveStateDebouncer.call(nextState);
+
+	return Promise.resolve();
 }
 
 /* -------------------- ACTIVE TAB TRACKING -------------------- */
 
-function updateActiveTab(tabId: number): Promise<void> {
-	return runExclusive(async () => {
-		const current = await getState();
+async function updateActiveTab(tabId: number): Promise<void> {
+	const current = await getState();
 
-		const next: SessionState = {
-			...current,
-			lastActiveTabId: tabId,
-		};
-		console.clear();
-		console.log('Active tab:', tabId);
+	if (current.lastActiveTabId === tabId) {
+		return;
+	}
 
-		await setState(next);
-	});
+	console.log(`=============== UPDATE ACTIVE TAB (${tabId}) ===============`);
+
+	const next: SessionState = {
+		...current,
+		lastActiveTabId: tabId,
+	};
+
+	await setState(next);
 }
+const updateActiveTabDebouncer = new Debouncer(
+	(tabId: number) => updateActiveTab(tabId),
+	100,
+);
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
-	updateActiveTab(activeInfo.tabId);
+	runExclusive(async () => {
+		await updateActiveTab(activeInfo.tabId);
+		// updateActiveTabDebouncer.call(activeInfo.tabId)
+	});
 });
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
 	if (windowId === chrome.windows.WINDOW_ID_NONE) return;
 
-	chrome.tabs.query({active: true, windowId}, function (tabs) {
+	runExclusive(async () => {
+		const tabs = await chrome.tabs.query({
+			active: true,
+			windowId,
+		});
+
 		const tabId = tabs[0]?.id;
 		if (tabId === undefined) return;
 
-		updateActiveTab(tabId);
+		await updateActiveTab(tabId);
+		// updateActiveTabDebouncer.call(tabId)
 	});
 });
 
@@ -103,13 +144,13 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 
 chrome.tabs.onCreated.addListener((tab) => {
 	runExclusive(async () => {
+		console.log(`=============== TAB CREATED (${tab.id}) ===============`);
 		if (tab.id == null) return;
 
 		const state = await getState();
 
-		console.clear();
+		console.log(`last active tab id: ${state.lastActiveTabId}`);
 		console.log(`opener id: ${tab.openerTabId}`);
-		console.log(`or from state: ${state.lastActiveTabId}`);
 
 		// const refererId = state.lastActiveTabId;
 		const refererId = tab.openerTabId ?? state.lastActiveTabId;
@@ -121,6 +162,8 @@ chrome.tabs.onCreated.addListener((tab) => {
 		state.lastActiveTabId = tab.id;
 
 		await setState(state);
+
+		await debugShowState();
 	});
 });
 
@@ -128,11 +171,11 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
 	runExclusive(async () => {
+		console.log(`=============== TAB DELETED (${tabId}) ===============`);
 		const state = await getState();
 
 		const parent = state.graph[tabId];
 
-		console.log(`deletion`);
 		console.log(`parent: ${parent}`);
 
 		// 1. supprimer le node
@@ -149,13 +192,20 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 			}
 
 			// 3. focus fallback
-			chrome.tabs.get(parent, (tab) => {
-				if (chrome.runtime.lastError || !tab) return;
-				chrome.tabs.update(parent, {active: true});
-			});
+			// chrome.tabs.get(parent, (tab) => {
+			// 	if (chrome.runtime.lastError || !tab) return;
+			// 	chrome.tabs.update(parent, {active: true});
+			// });
+			try {
+				await chrome.tabs.update(parent, {active: true});
+				// TODO ?
+				state.lastActiveTabId = parent;
+			} catch (e) {}
 		}
 
 		await setState(state);
+
+		await debugShowState();
 	});
 });
 
@@ -176,4 +226,4 @@ function init(): void {
 	});
 }
 
-init();
+// init();
