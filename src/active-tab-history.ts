@@ -1,7 +1,7 @@
 import {Debouncer} from '@vdegenne/debouncer';
 
 const STORAGE_KEY = 'history';
-const HISTORY_LENGTH = 10;
+const HISTORY_LENGTH = 200;
 
 let history: number[] | null = null;
 let statePromise: Promise<number[]> | null = null;
