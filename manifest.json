@@ -35,19 +35,19 @@
 			"matches": ["<all_urls>"]
 		}
 	],*/
-	"options_page": "/documents/options/dist/index.html"
+	"options_page": "/documents/options/dist/index.html",
 	/*"action": {
 		// "default_popup": "/documents/popup/dist/index.html",
 		"default_title": "RENAME THIS, open popup if set, or call chrome.action.onClicked"
 	}*/
-	/*"commands": {
-		"ask-chatgpt": {
+	"commands": {
+		"focus-previous-tab": {
 			"suggested_key": {
-				"default": "Alt+R"
+				"default": "Alt+Q"
 			},
-			"description": ""
+			"description": "Focus previous tab"
 		}
-	}*/
+	}
 	/*"side_panel": {
 		"default_path": "/documents/sidepanel/dist/index.html",
 	}*/

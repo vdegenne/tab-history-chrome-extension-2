@@ -1,16 +1,21 @@
-import {config, json, nodeResolve, terser} from '@vdegenne/rollup'
+import {config, json, nodeResolve, terser} from '@vdegenne/rollup';
 
 const plugins = [
 	//typescript(),
 	nodeResolve(),
 	json(),
 	terser(),
-]
+];
 
 export default config([
 	{
 		input: './lib/content.js',
 		output: {file: './content.js', format: 'iife'},
+		plugins,
+	},
+	{
+		input: './lib/tab-clock-content.js',
+		output: {file: './tab-clock-content.js', format: 'iife'},
 		plugins,
 	},
 	{
@@ -23,4 +28,4 @@ export default config([
 	// 	output: {file: './documents/offscreen/offscreen.js', format: 'iife'},
 	// 	plugins,
 	// },
-])
+]);

@@ -1,4 +1,10 @@
 import {Debouncer} from '@vdegenne/debouncer';
+import {
+	cancelLastPush,
+	focusPreviousTab,
+	pushId,
+	removeId,
+} from './active-tab-history.js';
 
 type TabGraph = {
 	[tabId: number]: number;
@@ -17,6 +23,15 @@ const STORAGE_KEY = 'tab_state';
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message?.type === 'GET_TAB_ID') {
 		sendResponse({tabId: sender.tab?.id});
+	}
+});
+
+/**
+ * For the focus-previous-tab shortcut
+ */
+chrome.commands.onCommand.addListener(function (command) {
+	if (command === 'focus-previous-tab') {
+		focusPreviousTab();
 	}
 });
 
@@ -102,12 +117,14 @@ async function updateActiveTab(tabId: number): Promise<void> {
 		return;
 	}
 
-	console.log(`=============== UPDATE ACTIVE TAB (${tabId}) ===============`);
+	// console.log(`=============== UPDATE ACTIVE TAB (${tabId}) ===============`);
 
 	const next: SessionState = {
 		...current,
 		lastActiveTabId: tabId,
 	};
+
+	pushId(tabId); // history (debounced, see module)
 
 	await setState(next);
 }
@@ -143,14 +160,19 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 /* -------------------- TAB CREATED -------------------- */
 
 chrome.tabs.onCreated.addListener((tab) => {
+	if (tab.id) {
+		cancelLastPush();
+		pushId(tab.id, {immediate: true}); // history
+	}
+
 	runExclusive(async () => {
-		console.log(`=============== TAB CREATED (${tab.id}) ===============`);
+		// console.log(`=============== TAB CREATED (${tab.id}) ===============`);
 		if (tab.id == null) return;
 
 		const state = await getState();
 
-		console.log(`last active tab id: ${state.lastActiveTabId}`);
-		console.log(`opener id: ${tab.openerTabId}`);
+		// console.log(`last active tab id: ${state.lastActiveTabId}`);
+		// console.log(`opener id: ${tab.openerTabId}`);
 
 		// const refererId = state.lastActiveTabId;
 		const refererId = tab.openerTabId ?? state.lastActiveTabId;
@@ -163,20 +185,22 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 		await setState(state);
 
-		await debugShowState();
+		// await debugShowState();
 	});
 });
 
 /* -------------------- TAB REMOVED -------------------- */
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+	removeId(tabId); // history (not debounced, see module)
+
 	runExclusive(async () => {
-		console.log(`=============== TAB DELETED (${tabId}) ===============`);
+		// console.log(`=============== TAB DELETED (${tabId}) ===============`);
 		const state = await getState();
 
 		const parent = state.graph[tabId];
 
-		console.log(`parent: ${parent}`);
+		// console.log(`parent: ${parent}`);
 
 		// 1. supprimer le node
 		delete state.graph[tabId];
@@ -205,7 +229,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 		await setState(state);
 
-		await debugShowState();
+		// await debugShowState();
 	});
 });
 

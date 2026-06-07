@@ -12,3 +12,4 @@ admin-scripts/serviceAccountKey.json
 background.js
 content.js
 offscreen.js
+tab-clock-content.js
